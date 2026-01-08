@@ -1,3 +1,23 @@
+# CS336 Assignment 2 – Systems & Parallelism for Transformer Training
+
+本项目是斯坦福大学 **CS336《Language Modeling from Scratch》Spring 2025** 课程第二次作业（Assignment 2: Systems）的完整实现。
+项目在 Assignment 1 从零实现 Transformer 语言模型的基础上，重点关注 **大语言模型训练中的系统性能问题**，围绕 **GPU 利用率、显存占用、多卡通信与并行训练** 等核心挑战，逐步实现并验证了一系列系统级优化方法。
+
+---
+
+## 项目亮点（Highlights）
+
+* 🔍 **Profiling-driven optimization**：从性能分析入手，而非盲目优化
+* ⚡ **FlashAttention-2（Triton 实现）**：支持超长序列的高效注意力计算
+* 🔗 **从零实现 DDP 与 Bucket DDP**：手写梯度同步与通信逻辑，深入理解分布式训练
+* 🔄 **通信与计算重叠（Overlap）**：显著降低分布式训练开销
+---
+
+
+
+
+# 结果
+## 1、端到端基准测试实验：
 ```python
 MODEL_CONFIGS = {
     "small": dict(d_model=768, d_ff=3072, num_layers=12, num_heads=12),
@@ -7,8 +27,6 @@ MODEL_CONFIGS = {
     "2.7b": dict(d_model=2560, d_ff=10240, num_layers=32, num_heads=32),
 }
 ```
-
-# 1、端到端基准测试实验：
 ### 模型推理/训练性能测试结果
 | 模型尺寸 | 操作类型          | 是否使用Compile | 均值(ms) | 标准差(ms) |
 |----------|-------------------|-----------------|----------|------------|
@@ -38,11 +56,11 @@ MODEL_CONFIGS = {
 2. 模型尺寸越大，forward+backward的耗时增长越明显，且标准差整体随模型尺寸增大略有上升；
 3. 使用compile后，部分场景（如small模型）的标准差有所增大，可能是编译优化的动态特性导致的小幅波动。
 
-# 2、nsys实验
+## 2、nsys实验
 由于使用的服务器并没有安装，也没有root权限，只能遗憾跳过该部分。
 
 
-# 3、精度实验
+## 3、精度实验
 运行以下代码：
 ```python
 import torch
@@ -77,7 +95,7 @@ tensor(10.0021)
 ```
 毫无疑问，完全使用f32的计算精度是最高的。而将f16转换成f32的精度损失相比完全使用f16的精度也还是更高一些。
 
-# 4、混合精度实验
+## 4、混合精度实验
 运行以下代码，使用autocast指定运算精度为bf16。观察哪些部分被转换成bf16了，哪些仍然是f32：
 ```python
 class ToyModel(nn.Module):
@@ -134,7 +152,7 @@ x(bf16) × W(bf16) → output(bf16)
 ```
 而在layerNorm这种数值敏感算子会强制回退到 float32 计算，并输出 float32 激活。
 
-# 5、内存实验
+## 5、内存实验
 仅forward：
 ![alt text](image.png)
 可以看到每次forward时抵达一次波峰，有过多少次forward就有多少次波峰
@@ -147,7 +165,7 @@ forward + backward：
 从 CUDA 内存时间线可以观察到，模型训练过程中显存使用呈现稳定的周期性锯齿结构。每个训练迭代中，前向传播阶段逐步分配中间激活，反向传播阶段达到显存峰值，随后在梯度计算完成后显存回落。整体显存基线保持稳定，未出现持续增长，表明不存在显著的内存泄漏问题。
 
 
-# 6、原始Attention | pytorch实现FlashAttention | Triton实现FlashAttention 性能比较
+## 6、原始Attention | pytorch实现FlashAttention | Triton实现FlashAttention 性能比较
 | T | D | dtype | PT fwd (ms) | PT bwd (ms) | PT fwd+bwd (ms) | TR fwd (ms) | TR bwd (ms) | TR fwd+bwd (ms) | Naive fwd (ms) | Naive bwd (ms) | Naive fwd+bwd (ms) |
 |---|---|-------|----|----|----|----|----|----|----|----|----|
 | 128 | 16 | bfloat16 | 8.445 | 0.103 | 9.405 | 0.011 | 0.181 | 0.553 | 0.034 | 0.164 | 0.573 |
@@ -162,6 +180,6 @@ forward + backward：
 可以看见，使用Triton实现的FlashAttention Forward性能显著优于pytorch实现与原Attention实现
 可以预见，使用Triton实现FlashAttention 的 Backward，性能也能大幅优化，本项目不进行实现，有机会来完成。
 
-# 7、Final: 完成了本项目中的并行部分，实现了 DDP 和 Bucket DDP
+## 7、Final: 完成了本项目中的并行部分，实现了 DDP 和 Bucket DDP
 这些内容有对应的pytest测试用例，完全通过。
 （优化器状态分片未写，有机会来完成）

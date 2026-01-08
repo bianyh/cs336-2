@@ -160,6 +160,8 @@ forward + backward：
 | 256 | 32 | float32 | 33.080 | 0.278 | 33.762 | 0.018 | 0.355 | 0.594 | 0.046 | 0.161 | 0.579 |
 
 可以看见，使用Triton实现的FlashAttention Forward性能显著优于pytorch实现与原Attention实现
-可以预见，使用Triton实现FlashAttention 的 Backward，性能也能大幅优化，本项目不进行实现。
+可以预见，使用Triton实现FlashAttention 的 Backward，性能也能大幅优化，本项目不进行实现，有机会来完成。
 
-# Final: 完成了本项目中的并行部分，实现了 DDP 和 Bucket DDP
+# 7、Final: 完成了本项目中的并行部分，实现了 DDP 和 Bucket DDP
+这些内容有对应的pytest测试用例，完全通过。
+（优化器状态分片未写，有机会来完成）
